@@ -8,7 +8,7 @@ const router = express.Router();
 
 
 const signUpBody = zod.object({
-    username: zod.string().email,
+    username: zod.string().email(),
     firstName: zod.string(),
     lastName: zod.string(),
     password: zod.string()
@@ -23,13 +23,21 @@ const signInBody = zod.object({
 router.post("/signup", async (req, res) => {
     try {
         const requestBody = req.body;
-        const { success } = signUpBody.safeParse(requestBody);
-
-        if (!success) {
-            return res.status(411).json({
-                message: "Email already taken / Incorrect inputs"
+        try {
+            const { success } = signUpBody.safeParse(requestBody);
+            if (!success) {
+                return res.status(411).json({
+                    message: "Email already taken / Incorrect inputs"
+                })
+            }
+        } catch (ex) {
+            console.log("Unable to parse Signup Data :: " + ex);
+            return res.status(403).json({
+                message: ex.message
             })
         }
+
+
 
         // Check if user exists in db or not
         const existingUser = await User.findOne({
@@ -72,6 +80,9 @@ router.post("/signup", async (req, res) => {
 
     } catch (ex) {
         console.log("Exception while making signup request call :: " + ex);
+        return res.status(411).json({
+            message: ex.message
+        })
     }
 
 })
@@ -172,4 +183,6 @@ router.get("/bulk", async (req, res) => {
     }
 })
 
-module.exports = router; 
+module.exports = {
+    userRouter: router
+}; 
