@@ -116,7 +116,7 @@ router.post("/signin", async (req, res) => {
         }
 
         res.status(411).json({
-            message: "Error while logging in"
+            message: "Invalid Password or Username"
         })
 
     } catch (ex) {
@@ -152,13 +152,8 @@ router.put("/", authMiddleware, async (req, res) => {
 // Get User From Backend using data Filter such as FirstName and lastName
 
 router.get("/bulk", async (req, res) => {
-    const parameter = req.query.filter || "";
-    if (parameter == "") {
-        res.json({
-            message: "No User Found"
-        })
-    }
-
+    const filter = req.query.filter || "";
+    console.log(filter)
     const users = await User.find({
         $or: [{
             firstName: {
@@ -171,17 +166,61 @@ router.get("/bulk", async (req, res) => {
         }]
     })
 
-    if (users != null && users != undefined) {
-        res.json({
-            user: users.map(user => ({
-                username: user.username,
-                firstName: user.firstName,
-                lastName: user.lastName,
-                _id: user._id
-            }))
+    res.json({
+        user: users.map(user => ({
+            username: user.username,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            _id: user._id
+        }))
+    })
+})
+
+router.post("/me", (req, res) => {
+    debugger
+    const token = req.body.token;
+    if (token != null) {
+        jwt.verify(token, jwtSecret, async (err, decoded) => {
+            if (err) {
+                res.status(403).json({
+                    status: "-1",
+                    message: "No user found"
+                })
+            }
+            const result = await findUserIdOnTheBaisOfToken(decoded);
+            if (result == null) {
+                res.status(403).json({
+                    status: "-1",
+                    message: "No user found"
+                })
+            } else {
+                res.status(200).json({
+                    user: result,
+                    status: "1",
+                    message: "User Found"
+                })
+            }
         })
     }
 })
+
+const findUserIdOnTheBaisOfToken = async (decoded) => {
+    try {
+        if (decoded != null) {
+            const user = await User.findOne({
+                _id: decoded.userId
+            });
+            if (!user) {
+                return null;
+            }
+            return user;
+        }
+    } catch (error) {
+        console.error('Error finding user:', error);
+        throw error;
+    }
+}
+
 
 module.exports = {
     userRouter: router
